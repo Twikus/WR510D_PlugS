@@ -55,9 +55,8 @@ const setOffShellyPlug = async () => {
 
 <template>
   <header>
-    <div>
-      <h1>Administration prise Shelly PlugS</h1>
-
+    <h1>Administration prise Shelly PlugS</h1>
+    <div v-if="state">
       <div class="container-info">
         <div>
           <h3>Status :</h3>
@@ -66,7 +65,7 @@ const setOffShellyPlug = async () => {
         </div>
         <div>
           <div>
-            <h3>Température :</h3>
+            <h3>Temperature :</h3>
             <p v-if="state">{{ state.temperature }}</p>
           </div>
           <div>
@@ -84,6 +83,9 @@ const setOffShellyPlug = async () => {
       
       <button v-if="showOnButton" @click="setOnShellyPlug">Allumer</button>
       <button v-if="showOffButton" @click="setOffShellyPlug">Éteindre</button>
+    </div>
+    <div v-else>
+      <h1>Chargement en cours...</h1>
     </div>
   </header>
 </template>
