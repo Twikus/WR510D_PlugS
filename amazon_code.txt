@@ -1,0 +1,185 @@
+const Alexa = require('ask-sdk-core');
+const http = require('node:https');
+
+const SHELLY_URL = 'https://shelly-77-eu.shelly.cloud/device/status?id=4022d88e30e8&auth_key=MWNiMjY5dWlk404459961993DCA83AE44BC6E3A6F58906952E7BECA0A5B69DC375C964915ACBC0EA536A0639CB73&channel=0';
+const HEADERS = {
+    'Content-Type': 'application/json'
+};
+
+const LaunchRequestHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'LaunchRequest';
+    },
+    handle(handlerInput) {
+        const speakOutput = 'Bienvenue, tu peux dire Hello ou Aide. Qu\'est-ce que tu veux essayer ?';
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .reprompt(speakOutput)
+            .getResponse();
+    }
+};
+
+const PlugInfo = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'getPlugInfo';
+    },
+    async handle(handlerInput) {
+        const speakOutput = 'Bien, voici les informations sur la prise :';
+        
+        try {
+            const response = await makeHttpGetRequest(SHELLY_URL, { method: 'GET', headers: HEADERS });
+            const plugIp = JSON.parse(response);
+
+            return handlerInput.responseBuilder
+                .speak(`${speakOutput} ${plugIp.data.device_status.wifi_sta.ip}`)
+                .reprompt('Que veux-tu faire d\'autre ?')
+                .getResponse();
+        } catch (error) {
+            const speakOutput = 'Désolé, une erreur s\'est produite lors de la requête de l\'API.';
+            return handlerInput.responseBuilder
+                .speak(speakOutput)
+                .getResponse();
+        }
+    }
+};
+
+const PlugPower = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'powerStatus';
+    },
+    async handle(handlerInput) {
+        const status = handlerInput.requestEnvelope.request.intent.slots.power_status.value;
+        const speakOutput = `ok j\'${status} la prise`;
+        
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .getResponse();
+    }
+};
+
+async function makeHttpGetRequest(url, options) {
+    return new Promise((resolve, reject) => {
+        const req = http.request(url, options, (res) => {
+            let response = '';
+
+            res.on('data', (chunk) => {
+                response += chunk;
+            });
+
+            res.on('end', () => {
+                resolve(response);
+            });
+        });
+
+        req.on('error', (error) => {
+            reject(error);
+        });
+
+        req.end();
+    })
+    .catch(error => {
+        throw new Error(`HTTP request failed: ${error.message}`);
+    });
+}
+
+const HelpIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
+    },
+    handle(handlerInput) {
+        const speakOutput = 'Tu peux me dire bonjour ! Comment je peux t\'aider ?';
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .reprompt(speakOutput)
+            .getResponse();
+    }
+};
+
+const CancelAndStopIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && (Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
+                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent');
+    },
+    handle(handlerInput) {
+        const speakOutput = 'Au revoir !';
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .getResponse();
+    }
+};
+
+const FallbackIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.FallbackIntent';
+    },
+    handle(handlerInput) {
+        const speakOutput = 'Désolé, je ne connais pas ceci. Réessaye s\'il te plaît.';
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .reprompt(speakOutput)
+            .getResponse();
+    }
+};
+
+const SessionEndedRequestHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'SessionEndedRequest';
+    },
+    handle(handlerInput) {
+        console.log(`~~~~ Session fini: ${JSON.stringify(handlerInput.requestEnvelope)}`);
+        return handlerInput.responseBuilder.getResponse();
+    }
+};
+
+const IntentReflectorHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest';
+    },
+    handle(handlerInput) {
+        const intentName = Alexa.getIntentName(handlerInput.requestEnvelope);
+        const speakOutput = `${intentName}`;
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .getResponse();
+    }
+};
+
+const ErrorHandler = {
+    canHandle() {
+        return true;
+    },
+    handle(handlerInput, error) {
+        const speakOutput = 'Désolé, Je n\'ai pas compris ce que tu m\'as dit. Please try again.';
+        console.log(`~~~~ Error handled: ${JSON.stringify(error)}`);
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .reprompt(speakOutput)
+            .getResponse();
+    }
+};
+
+exports.handler = Alexa.SkillBuilders.custom()
+    .addRequestHandlers(
+        LaunchRequestHandler,
+        PlugInfo,
+        PlugPower,
+        HelpIntentHandler,
+        CancelAndStopIntentHandler,
+        FallbackIntentHandler,
+        SessionEndedRequestHandler,
+        IntentReflectorHandler)
+    .addErrorHandlers(
+        ErrorHandler)
+    .withCustomUserAgent('sample/hello-world/v1.2')
+    .lambda();
