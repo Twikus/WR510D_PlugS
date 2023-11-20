@@ -24,8 +24,11 @@ onMounted(() => {
 })
 
 const getShellyStatus = async () => {
-  const response = await fetch('http://192.168.1.100/status')
+  const response = await fetch('https://shelly-77-eu.shelly.cloud/device/status?auth_key=MWNiMjY5dWlk404459961993DCA83AE44BC6E3A6F58906952E7BECA0A5B69DC375C964915ACBC0EA536A0639CB73&id=4022d88e30e8')
+
   state.value = await response.json()
+  state.value = state.value.data.device_status
+
   console.log(state.value)
 
   if (state.value.relays[0].ison === true) {
@@ -38,23 +41,49 @@ const getShellyStatus = async () => {
 }
 
 const setOnShellyPlug = async () => {
-  // requete pour passer data.ison en true
-  const response = await fetch('http://192.168.1.100/relay/0?turn=on')
-  const data = await response.json()
-  getShellyStatus()
+  const formdata = new FormData();
+  formdata.append("channel", "0");
+  formdata.append("turn", "on");
+  formdata.append("id", "4022d88e30e8");
+  formdata.append("auth_key", "MWNiMjY5dWlk404459961993DCA83AE44BC6E3A6F58906952E7BECA0A5B69DC375C964915ACBC0EA536A0639CB73");
+
+  const requestOptions = {
+    method: 'POST',
+    body: formdata,
+  };
+
+  await fetch("https://shelly-77-eu.shelly.cloud/device/relay/control", requestOptions)
+    .then(response => response.json())
+    .then(result => console.log(result))
+    .catch(error => console.log('error', error));
+
+  getShellyStatus();
 }
 
 const setOffShellyPlug = async () => {
-  // requete pour passer data.ison en false
-  const response = await fetch('http://192.168.1.100/relay/0?turn=off')
-  const data = await response.json()
-  getShellyStatus()
+  const formdata = new FormData();
+  formdata.append("channel", "0");
+  formdata.append("turn", "on");
+  formdata.append("id", "4022d88e30e8");
+  formdata.append("auth_key", "MWNiMjY5dWlk404459961993DCA83AE44BC6E3A6F58906952E7BECA0A5B69DC375C964915ACBC0EA536A0639CB73");
+
+  const requestOptions = {
+    method: 'POST',
+    body: formdata,
+  };
+
+  fetch("https://shelly-77-eu.shelly.cloud/device/relay/control", requestOptions)
+    .then(response => response.text())
+    .then(result => console.log(result))
+    .catch(error => console.log('error', error));
+
+  getShellyStatus();
 }
 
 </script>
 
 <template>
-  <header>
+  <div>
     <h1>Administration prise Shelly PlugS</h1>
     <div v-if="state">
       <div class="container-info">
@@ -87,7 +116,7 @@ const setOffShellyPlug = async () => {
     <div v-else>
       <h1>Chargement en cours...</h1>
     </div>
-  </header>
+  </div>
 </template>
 
 <style scoped lang="scss">
